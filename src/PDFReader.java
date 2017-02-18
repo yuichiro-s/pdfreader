@@ -25,7 +25,7 @@ public class PDFReader {
                     //(new DrawExtractor2()).process(doc);
                     //DrawExtractor engine = new DrawExtractor(doc.getPage(2));
                     //engine.run();
-                    //(new TextExtractor()).process(doc, f.getName()+".txt");
+                    (new TextExtractor()).process(doc, f.getName()+".txt");
                     //(new ImageExtractor()).process(doc);
                 }
             }
