@@ -34,11 +34,11 @@ public class DrawExtractor extends PDFGraphicsStreamEngine {
     }
     @Override
     public void drawImage(PDImage pdImage) throws IOException {
-        System.out.println("drawImage");
+        //System.out.println("drawImage");
     }
     @Override
     public void clip(int windingRule) throws IOException {
-        System.out.println("clip");
+        //System.out.println("clip");
     }
     @Override
     public void moveTo(float x, float y) throws IOException {
@@ -87,8 +87,8 @@ public class DrawExtractor extends PDFGraphicsStreamEngine {
     @Override
     public void showTextString(byte[] string) throws IOException {
         //System.out.print("showTextString \"");
-        //super.showTextString(string);
-        //System.out.println("\"");
+        super.showTextString(string);
+        System.out.println("");
     }
     /**
      * Overridden from PDFStreamEngine.
@@ -96,8 +96,8 @@ public class DrawExtractor extends PDFGraphicsStreamEngine {
     @Override
     public void showTextStrings(COSArray array) throws IOException {
         //System.out.print("showTextStrings \"");
-        //super.showTextStrings(array);
-        //System.out.println("\"");
+        super.showTextStrings(array);
+        System.out.println("");
     }
     /**
      * Overridden from PDFStreamEngine.
