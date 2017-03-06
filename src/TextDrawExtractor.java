@@ -10,6 +10,7 @@ import java.awt.geom.Point2D;
 import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,9 +62,9 @@ public class TextDrawExtractor {
             this.objects = objects;
         }
 
-        private void writeChar(TextPosition p, String s) throws IOException {
+        private void writeChar(TextPosition p, char c) throws IOException {
             output.write("C"); output.write("\t");
-            output.write(s); output.write("\t");
+            output.write(c); output.write("\t");
             output.write(String.valueOf(p.getXDirAdj())); output.write("\t");
             output.write(String.valueOf(p.getYDirAdj())); output.write("\t");
             output.write(String.valueOf(p.getWidthDirAdj())); output.write("\t");
@@ -71,54 +72,35 @@ public class TextDrawExtractor {
             output.write(p.getFont().getName()); output.write("\t");
             output.write(String.valueOf(p.getFontSize())); output.write("\t");
             output.write(String.valueOf(p.getWidthOfSpace())); output.write("\n");
-
-            cursor++;
-            while (cursor < objects.size() && objects.get(cursor) != null) {
-                // non-character
-                output.write("\n");
-                List<String> lst = objects.get(cursor);
-                for (int i = 0; i < lst.size(); i++) {
-                    output.write(lst.get(i));
-                    if (i < lst.size() - 1) {
-                        output.write("\t");
-                    } else {
-                        output.write("\n");
-                    }
-                }
-                cursor++;
-            }
         }
 
         @Override
         protected void writeString(String string, List<TextPosition> textPositions) throws IOException {
             for (TextPosition p : textPositions) {
                 String s = p.getUnicode();
-                switch (s) {
-                    case "ﬁ":
-                        writeChar(p, "f");
-                        writeChar(p, "i");
-                        break;
-                    case "ﬂ":
-                        writeChar(p, "f");
-                        writeChar(p, "l");
-                        break;
-                    case "ﬀ":
-                        writeChar(p, "f");
-                        writeChar(p, "f");
-                        break;
-                    case "ﬃ":
-                        writeChar(p, "f");
-                        writeChar(p, "f");
-                        writeChar(p, "i");
-                        break;
-                    case "ﬄ":
-                        writeChar(p, "f");
-                        writeChar(p, "f");
-                        writeChar(p, "l");
-                        break;
-                    default:
-                        writeChar(p, s);
-                        break;
+
+                // NFKD normalization
+                String s_norm = Normalizer.normalize(s, Normalizer.Form.NFKD);
+
+                for (char c: s_norm.toCharArray()) {
+                    writeChar(p, c);
+                }
+
+                // print draw features
+                cursor++;
+                while (cursor < objects.size() && objects.get(cursor) != null) {
+                    // non-character
+                    output.write("\n");
+                    List<String> lst = objects.get(cursor);
+                    for (int i = 0; i < lst.size(); i++) {
+                        output.write(lst.get(i));
+                        if (i < lst.size() - 1) {
+                            output.write("\t");
+                        } else {
+                            output.write("\n");
+                        }
+                    }
+                    cursor++;
                 }
             }
         }
