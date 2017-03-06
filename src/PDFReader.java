@@ -16,7 +16,7 @@ public class PDFReader {
             PDDocument doc = null;
             try {
                 File file = new File(args[0]);
-                ArrayList<File> files = new ArrayList();
+                ArrayList<File> files = new ArrayList<>();
                 if (file.isFile()) files.add(file);
                 else if(file.isDirectory()) {
                     for (File f : file.listFiles()) {
