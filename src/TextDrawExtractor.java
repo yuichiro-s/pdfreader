@@ -2,7 +2,11 @@ import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDFontFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImage;
+import org.apache.pdfbox.pdmodel.graphics.state.PDGraphicsState;
+import org.apache.pdfbox.pdmodel.graphics.state.PDTextState;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 
@@ -76,6 +80,8 @@ public class TextDrawExtractor {
 
         @Override
         protected void writeString(String string, List<TextPosition> textPositions) throws IOException {
+            writeDrawFeatures();
+
             for (TextPosition p : textPositions) {
                 String s = p.getUnicode();
 
@@ -84,23 +90,8 @@ public class TextDrawExtractor {
 
                 for (char c: s_norm.toCharArray()) {
                     writeChar(p, c);
-                }
-
-                // print draw features
-                cursor++;
-                while (cursor < objects.size() && objects.get(cursor) != null) {
-                    // non-character
-                    output.write("\n");
-                    List<String> lst = objects.get(cursor);
-                    for (int i = 0; i < lst.size(); i++) {
-                        output.write(lst.get(i));
-                        if (i < lst.size() - 1) {
-                            output.write("\t");
-                        } else {
-                            output.write("\n");
-                        }
-                    }
                     cursor++;
+                    writeDrawFeatures();
                 }
             }
         }
@@ -108,15 +99,27 @@ public class TextDrawExtractor {
         @Override
         protected void writeWordSeparator() throws IOException {
         }
+
+        private void writeDrawFeatures() throws IOException {
+            while (cursor < objects.size() && objects.get(cursor) != null) {
+                // non-character
+                List<String> lst = objects.get(cursor);
+                for (int i = 0; i < lst.size(); i++) {
+                    output.write(lst.get(i));
+                    if (i < lst.size() - 1) {
+                        output.write("\t");
+                    } else {
+                        output.write("\n");
+                    }
+                }
+                cursor++;
+            }
+        }
     }
 
     private static class MyPDFGraphicsStreamEngine extends PDFGraphicsStreamEngine {
 
         private final List<List<String>> objects;
-        private float stroke_x1;
-        private float stroke_y1;
-        private float stroke_x2;
-        private float stroke_y2;
 
         MyPDFGraphicsStreamEngine(PDPage page, List<List<String>> objects) {
             super(page);
@@ -143,14 +146,20 @@ public class TextDrawExtractor {
 
         @Override
         public void moveTo(float x, float y) throws IOException {
-            stroke_x1 = x;
-            stroke_y1 = y;
+            List<String> obj = new ArrayList<>();
+            obj.add("[MOVE_TO]");
+            obj.add(String.valueOf(x));
+            obj.add(String.valueOf(y));
+            objects.add(obj);
         }
 
         @Override
         public void lineTo(float x, float y) throws IOException {
-            stroke_x2 = x;
-            stroke_y2 = y;
+            List<String> obj = new ArrayList<>();
+            obj.add("[LINE_TO]");
+            obj.add(String.valueOf(x));
+            obj.add(String.valueOf(y));
+            objects.add(obj);
         }
 
         @Override
@@ -188,11 +197,7 @@ public class TextDrawExtractor {
         @Override
         public void strokePath() throws IOException {
             List<String> obj = new ArrayList<>();
-            obj.add("L");
-            obj.add(String.valueOf(stroke_x1));
-            obj.add(String.valueOf(stroke_y1));
-            obj.add(String.valueOf(stroke_x2));
-            obj.add(String.valueOf(stroke_y2));
+            obj.add("[STROKE_PATH]");
             objects.add(obj);
         }
 
@@ -222,8 +227,18 @@ public class TextDrawExtractor {
 
         @Override
         public void showText(byte[] string) throws IOException {
-            for (byte b : string) {
-                objects.add(null);
+            PDGraphicsState state = this.getGraphicsState();
+            PDTextState textState = state.getTextState();
+            PDFont font = textState.getFont();
+            if(font == null) {
+                font = PDFontFactory.createDefaultFont();
+            }
+            for(ByteArrayInputStream in = new ByteArrayInputStream(string); in.available() > 0;) {
+                int code = font.readCode(in);
+                String unicode = font.toUnicode(code);
+                for (char c: Normalizer.normalize(unicode, Normalizer.Form.NFKD).toCharArray()) {
+                    objects.add(null);
+                }
             }
         }
     }
