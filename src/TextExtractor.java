@@ -3,6 +3,7 @@ import java.util.List;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
+import org.apache.pdfbox.cos.COSBase;
 
 public class TextExtractor extends PDFTextStripper {
 
