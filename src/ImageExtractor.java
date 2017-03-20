@@ -1,5 +1,7 @@
 import java.io.IOException;
 import java.io.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 
 import org.apache.pdfbox.cos.COSBase;
@@ -20,6 +22,35 @@ import org.apache.pdfbox.contentstream.operator.state.SetGraphicsStateParameters
 import org.apache.pdfbox.contentstream.operator.state.SetMatrix;
 
 public class ImageExtractor extends PDFStreamEngine {
+
+    public static void main(String[] args) throws IOException {
+        for (String path: args) {
+            Path p = Paths.get(path);
+            if (Files.isDirectory(p)) {
+                FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        if (file.toString().endsWith(".pdf")) {
+                            processFile(file);
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+                };
+                Files.walkFileTree(p, visitor);
+            } else {
+                processFile(p);
+            }
+        }
+    }
+
+    static void processFile(Path path) throws IOException {
+        PDDocument doc = PDDocument.load(path.toFile());
+        String outPath = path.toString().replace(".pdf", ".image.txt");
+        try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
+            ImageExtractor ie = new ImageExtractor();
+            ie.process(doc);
+        }
+    }
 
     int pageNo;
 
