@@ -1,2 +1,81 @@
 # pdfreader
-PDFReader using PDFBox.
+PDF reader using PDFBox.
+
+```
+java -jar <xExtractor.jar> <x.pdf>
+```
+
+## TextExtractor
+Extract texts from PDF.
+1. Page number
+1. Word
+
+Example:
+```
+1	Proceedings
+1	of
+1	the
+1	50th
+1	Annual
+1	Meeting
+1	of
+1	the
+1	Association
+1	for
+1	Computational
+1	Linguistics,
+1	pages
+1	440–448,
+
+1	Jeju,
+1	Republic
+1	of
+1	Korea,
+```
+
+## ImageExtractor
+Extract images from PDF.
+1. Page number
+1. x
+1. y
+1. width
+1. height
+
+Example:
+```
+3	106.02108	594.7168	94.08959	105.8508
+3	254.82501	594.7168	93.23424	136.21608
+3	402.77362	594.7168	100.5048	136.21608
+4	147.50803	613.83466	93.875755	85.535995
+4	253.21825	613.83466	105.636955	84.4668
+4	370.68967	613.83466	105.636955	84.4668
+6	313.12714	424.67242	236.412	141.8472
+```
+
+## TextDrawExtractor
+Extract text and draw operations from PDF.
+1. 'C' (char) or 'L' (line)
+1. Character
+1. x
+1. y
+1. width
+1. height
+1.
+1.
+
+Example:
+```
+C	P	106.4301	762.9172	5.47847	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	r	111.90857	762.9172	3.4879303	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	o	114.99301	762.9172	4.4832	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	c	119.47621	762.9172	3.981079	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	e	123.45729	762.9172	3.981079	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	e	127.43837	762.9172	3.981079	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	d	131.41945	762.9172	4.4832	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	i	135.90265	762.9172	2.4926605	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	n	138.39531	762.9172	4.4832	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	g	142.87851	762.9172	4.4832	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	s	147.36171	762.9172	3.4879303	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	o	153.09125	762.9172	4.4832	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+C	f	157.57445	762.9172	2.4926605	5.352941	LMQTGC+NimbusRomNo9L-ReguItal	8.9664	2.2416003
+```
