@@ -32,7 +32,7 @@ public class TextExtractor extends PDFTextStripper {
 
     static void processFile(Path path) throws IOException {
         PDDocument doc = PDDocument.load(path.toFile());
-        String outPath = path.toString().replace(".pdf", ".pdf.txt");
+        String outPath = path.toString().replace(".pdf", ".txt");
         try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
             TextExtractor te = new TextExtractor();
             te.writeText(doc, w);
