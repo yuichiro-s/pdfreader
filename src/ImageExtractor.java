@@ -45,16 +45,17 @@ public class ImageExtractor extends PDFStreamEngine {
 
     static void processFile(Path path) throws IOException {
         PDDocument doc = PDDocument.load(path.toFile());
-        String outPath = path.toString().replace(".pdf", ".image.txt");
-        try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
-            ImageExtractor ie = new ImageExtractor();
-            ie.process(doc);
-        }
+        String outPath = path.toString().replace(".pdf", ".image");
+        ImageExtractor ie = new ImageExtractor(outPath);
+        ie.process(doc);
+        ie.output.close();
     }
 
     int pageNo;
+    Writer output;
 
-    public ImageExtractor() throws IOException {
+    public ImageExtractor(String outPath) throws IOException {
+        output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"));
         addOperator(new Concatenate());
         addOperator(new DrawObject());
         addOperator(new SetGraphicsStateParameters());
@@ -80,13 +81,13 @@ public class ImageExtractor extends PDFStreamEngine {
 
             if (xobject instanceof PDImageXObject) {
                 PDImageXObject image = (PDImageXObject)xobject;
-                System.out.print(this.pageNo + "\t");
+                output.write(String.valueOf(pageNo)); output.write("\t");
 
                 // position (x, y, width, height)
                 Matrix ctmNew = getGraphicsState().getCurrentTransformationMatrix();
-                System.out.print(ctmNew.getTranslateX() + "\t" + ctmNew.getTranslateY() + "\t");
-                System.out.print(ctmNew.getScalingFactorX() + "\t" + ctmNew.getScalingFactorY());
-                System.out.print("\n");
+                output.write(ctmNew.getTranslateX() + "\t" + ctmNew.getTranslateY() + "\t");
+                output.write(ctmNew.getScalingFactorX() + "\t" + ctmNew.getScalingFactorY());
+                output.write("\n");
             }
             else if(xobject instanceof PDFormXObject) {
                 PDFormXObject form = (PDFormXObject)xobject;
