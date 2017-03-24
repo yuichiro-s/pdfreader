@@ -46,7 +46,15 @@ public class ImageExtractor extends PDFStreamEngine {
     static void processFile(Path path) throws IOException {
         PDDocument doc = PDDocument.load(path.toFile());
         String outPath = path.toString().replace(".pdf", ".image");
-        ImageExtractor ie = new ImageExtractor(outPath);
+        ImageExtractor ie = new ImageExtractor();
+        ie.output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"));
+        ie.process(doc);
+        ie.output.close();
+    }
+
+    static void countFile(Path path) throws IOException {
+        PDDocument doc = PDDocument.load(path.toFile());
+        ImageExtractor ie = new ImageExtractor();
         ie.process(doc);
         ie.output.close();
     }
@@ -54,8 +62,7 @@ public class ImageExtractor extends PDFStreamEngine {
     int pageNo;
     Writer output;
 
-    public ImageExtractor(String outPath) throws IOException {
-        output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"));
+    public ImageExtractor() throws IOException {
         addOperator(new Concatenate());
         addOperator(new DrawObject());
         addOperator(new SetGraphicsStateParameters());
