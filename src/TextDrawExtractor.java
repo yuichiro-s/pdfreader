@@ -105,26 +105,6 @@ public class TextDrawExtractor {
                 }
             }
             addNewLine();
-
-            //writeDraw();
-            /*
-            for (TextPosition p : textPositions) {
-                String s = Normalizer.normalize(p.getUnicode(), Normalizer.Form.NFKD);
-                for (char c : s.toCharArray()) {
-                    output.write(String.valueOf(getCurrentPageNo())); output.write("\t");
-                    output.write(c); output.write("\t");
-                    output.write(String.valueOf(p.getXDirAdj())); output.write("\t");
-                    output.write(String.valueOf(p.getYDirAdj())); output.write("\t");
-                    output.write(String.valueOf(p.getWidthDirAdj())); output.write("\t");
-                    output.write(String.valueOf(p.getHeightDir())); output.write("\t");
-                    output.write(p.getFont().getName()); output.write("\t");
-                    output.write(String.valueOf(p.getFontSize())); output.write("\t");
-                    output.write(String.valueOf(p.getWidthOfSpace())); output.write("\n");
-                }
-                cursor++;
-                //writeDraw();
-            }
-            */
         }
 
         @Override
