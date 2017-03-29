@@ -2,7 +2,11 @@ import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDFontFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImage;
+import org.apache.pdfbox.pdmodel.graphics.state.PDGraphicsState;
+import org.apache.pdfbox.pdmodel.graphics.state.PDTextState;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 
@@ -17,108 +21,126 @@ import java.util.List;
 public class TextDrawExtractor {
 
     public static void main(String[] args) throws IOException {
-
         for (String path: args) {
             Path p = Paths.get(path);
             if (Files.isDirectory(p)) {
                 FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                        if (file.toString().endsWith(".pdf")) {
-                            processFile(file);
-                        }
+                        if (file.toString().endsWith(".pdf")) processFile(file);
                         return FileVisitResult.CONTINUE;
                     }
                 };
                 Files.walkFileTree(p, visitor);
-            } else {
-                processFile(p);
             }
+            else processFile(p);
         }
     }
 
     private static void processFile(Path path) throws IOException {
         PDDocument doc = PDDocument.load(path.toFile());
-        assert doc.getNumberOfPages() == 1;
-
         String outPath = path.toString().replace(".pdf", ".feats");
+
         try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
             List<List<String>> objects = new ArrayList<>();
-            PDFGraphicsStreamEngine gse = new MyPDFGraphicsStreamEngine(doc.getPage(0), objects);
-            gse.processPage(doc.getPage(0));
+            for (int i = 0; i < doc.getNumberOfPages(); i++) {
+                PDFGraphicsStreamEngine gse = new MyPDFGraphicsStreamEngine(doc.getPage(i), objects);
+                gse.processPage(doc.getPage(i));
+                for (List<String> obj : objects) {
+                    if (obj != null) obj.add(0, String.valueOf(i+1));
+                }
+            }
 
             PDFTextStripper ts = new MyPDFTextStripper(objects);
-            ts.writeText(doc, w);
+            ts.writeText(doc, new OutputStreamWriter(new ByteArrayOutputStream()));
+            for (List<String> obj : objects) {
+                if (obj.size() == 1 && obj.get(0).length() == 0) w.write("\n");
+                else {
+                    w.write(String.join("\t", obj));
+                    w.write("\n");
+                }
+            }
         }
+        doc.close();
     }
 
     private static class MyPDFTextStripper extends PDFTextStripper {
-
-        private int cursor;
+        int cursor = 0;
         List<List<String>> objects;
 
         MyPDFTextStripper(List<List<String>> objects) throws IOException {
-            this.cursor = 0;
             this.objects = objects;
         }
 
-        private void writeChar(TextPosition p, char c) throws IOException {
-            output.write("C"); output.write("\t");
-            output.write(c); output.write("\t");
-            output.write(String.valueOf(p.getXDirAdj())); output.write("\t");
-            output.write(String.valueOf(p.getYDirAdj())); output.write("\t");
-            output.write(String.valueOf(p.getWidthDirAdj())); output.write("\t");
-            output.write(String.valueOf(p.getHeightDir())); output.write("\t");
-            output.write(p.getFont().getName()); output.write("\t");
-            output.write(String.valueOf(p.getFontSize())); output.write("\t");
-            output.write(String.valueOf(p.getWidthOfSpace())); output.write("\n");
+        void addNewLine() {
+            List<String> obj = new ArrayList<>();
+            obj.add("");
+            objects.add(cursor, obj);
+            cursor++;
         }
 
         @Override
         protected void writeString(String string, List<TextPosition> textPositions) throws IOException {
+            boolean isdraw = cursor< objects.size() && objects.get(cursor) != null;
+            while (cursor< objects.size() && objects.get(cursor) != null) cursor++;
+            if (isdraw) addNewLine();
+
             for (TextPosition p : textPositions) {
-                String s = p.getUnicode();
+                String s = Normalizer.normalize(p.getUnicode(), Normalizer.Form.NFKD);
+                for (char c : s.toCharArray()) {
+                    if (objects.get(cursor) != null) throw new IllegalStateException("Something wrong with draw extraction.");
 
-                // NFKD normalization
-                String s_norm = Normalizer.normalize(s, Normalizer.Form.NFKD);
-
-                for (char c: s_norm.toCharArray()) {
-                    writeChar(p, c);
-                }
-
-                // print draw features
-                cursor++;
-                while (cursor < objects.size() && objects.get(cursor) != null) {
-                    // non-character
-                    output.write("\n");
-                    List<String> lst = objects.get(cursor);
-                    for (int i = 0; i < lst.size(); i++) {
-                        output.write(lst.get(i));
-                        if (i < lst.size() - 1) {
-                            output.write("\t");
-                        } else {
-                            output.write("\n");
-                        }
-                    }
+                    List<String> obj = new ArrayList<>();
+                    obj.add(String.valueOf(getCurrentPageNo()));
+                    obj.add(String.valueOf(c));
+                    obj.add(String.valueOf(p.getXDirAdj()));
+                    obj.add(String.valueOf(p.getYDirAdj()));
+                    obj.add(String.valueOf(p.getWidthDirAdj()));
+                    obj.add(String.valueOf(p.getHeightDir()));
+                    obj.add(p.getFont().getName());
+                    obj.add(String.valueOf(p.getFontSize()));
+                    obj.add(String.valueOf(p.getWidthOfSpace()));
+                    objects.set(cursor, obj);
                     cursor++;
                 }
             }
+            addNewLine();
+
+            //writeDraw();
+            /*
+            for (TextPosition p : textPositions) {
+                String s = Normalizer.normalize(p.getUnicode(), Normalizer.Form.NFKD);
+                for (char c : s.toCharArray()) {
+                    output.write(String.valueOf(getCurrentPageNo())); output.write("\t");
+                    output.write(c); output.write("\t");
+                    output.write(String.valueOf(p.getXDirAdj())); output.write("\t");
+                    output.write(String.valueOf(p.getYDirAdj())); output.write("\t");
+                    output.write(String.valueOf(p.getWidthDirAdj())); output.write("\t");
+                    output.write(String.valueOf(p.getHeightDir())); output.write("\t");
+                    output.write(p.getFont().getName()); output.write("\t");
+                    output.write(String.valueOf(p.getFontSize())); output.write("\t");
+                    output.write(String.valueOf(p.getWidthOfSpace())); output.write("\n");
+                }
+                cursor++;
+                //writeDraw();
+            }
+            */
         }
 
         @Override
         protected void writeWordSeparator() throws IOException {
+        }
+
+        @Override
+        protected void writeLineSeparator() throws IOException {
         }
     }
 
     private static class MyPDFGraphicsStreamEngine extends PDFGraphicsStreamEngine {
 
         private final List<List<String>> objects;
-        private float stroke_x1;
-        private float stroke_y1;
-        private float stroke_x2;
-        private float stroke_y2;
 
-        MyPDFGraphicsStreamEngine(PDPage page, List<List<String>> objects) {
+        MyPDFGraphicsStreamEngine (PDPage page, List<List<String>> objects) {
             super(page);
             this.objects = objects;
         }
@@ -143,14 +165,20 @@ public class TextDrawExtractor {
 
         @Override
         public void moveTo(float x, float y) throws IOException {
-            stroke_x1 = x;
-            stroke_y1 = y;
+            List<String> obj = new ArrayList<>();
+            obj.add("[MOVE_TO]");
+            obj.add(String.valueOf(x));
+            obj.add(String.valueOf(y));
+            objects.add(obj);
         }
 
         @Override
         public void lineTo(float x, float y) throws IOException {
-            stroke_x2 = x;
-            stroke_y2 = y;
+            List<String> obj = new ArrayList<>();
+            obj.add("[LINE_TO]");
+            obj.add(String.valueOf(x));
+            obj.add(String.valueOf(y));
+            objects.add(obj);
         }
 
         @Override
@@ -188,11 +216,7 @@ public class TextDrawExtractor {
         @Override
         public void strokePath() throws IOException {
             List<String> obj = new ArrayList<>();
-            obj.add("L");
-            obj.add(String.valueOf(stroke_x1));
-            obj.add(String.valueOf(stroke_y1));
-            obj.add(String.valueOf(stroke_x2));
-            obj.add(String.valueOf(stroke_y2));
+            obj.add("[STROKE_PATH]");
             objects.add(obj);
         }
 
@@ -222,10 +246,21 @@ public class TextDrawExtractor {
 
         @Override
         public void showText(byte[] string) throws IOException {
-            for (byte b : string) {
-                objects.add(null);
+            PDGraphicsState state = this.getGraphicsState();
+            PDTextState textState = state.getTextState();
+            PDFont font = textState.getFont();
+            if (font == null) font = PDFontFactory.createDefaultFont();
+
+            for (ByteArrayInputStream in = new ByteArrayInputStream(string); in.available() > 0;) {
+                int code = font.readCode(in);
+                String unicode = font.toUnicode(code);
+                if (unicode == null) objects.add(null);
+                else {
+                    for (char c : Normalizer.normalize(unicode, Normalizer.Form.NFKD).toCharArray()) {
+                        objects.add(null);
+                    }
+                }
             }
         }
     }
-
 }
