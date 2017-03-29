@@ -1,4 +1,4 @@
 *.pdf
 *.jar
 out/*
-.idea/workspace.xml
+workspace.xml
