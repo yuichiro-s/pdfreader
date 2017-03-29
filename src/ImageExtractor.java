@@ -52,13 +52,6 @@ public class ImageExtractor extends PDFStreamEngine {
         ie.output.close();
     }
 
-    static void countFile(Path path) throws IOException {
-        PDDocument doc = PDDocument.load(path.toFile());
-        ImageExtractor ie = new ImageExtractor();
-        ie.process(doc);
-        ie.output.close();
-    }
-
     int pageNo;
     Writer output;
 
