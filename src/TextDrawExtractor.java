@@ -75,18 +75,19 @@ public class TextDrawExtractor {
             this.objects = objects;
         }
 
-        void addNewLine() {
+        void addText(String[] strings) {
             List<String> obj = new ArrayList<>();
-            obj.add("");
+            for (String s : strings) obj.add(s);
             objects.add(cursor, obj);
             cursor++;
         }
+        void addText(String string) { addText(new String[] { string }); }
 
         @Override
         protected void writeString(String string, List<TextPosition> textPositions) throws IOException {
             int prevCursor = cursor;
             while (cursor< objects.size() && objects.get(cursor) != null) cursor++;
-            if (prevCursor != cursor) addNewLine();
+            if (prevCursor != cursor) addText("[EOT]");
 
             for (TextPosition p : textPositions) {
                 String unicode = p.getUnicode();
@@ -109,15 +110,16 @@ public class TextDrawExtractor {
                     cursor++;
                 }
             }
-            addNewLine();
         }
 
         @Override
         protected void writeWordSeparator() throws IOException {
+            addText("[EOT]");
         }
 
         @Override
         protected void writeLineSeparator() throws IOException {
+            addText("[EOL]");
         }
     }
 
