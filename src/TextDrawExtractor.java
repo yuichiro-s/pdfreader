@@ -2,8 +2,12 @@ import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
 import org.apache.pdfbox.cos.*;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDFontFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImage;
+import org.apache.pdfbox.pdmodel.graphics.state.PDGraphicsState;
+import org.apache.pdfbox.pdmodel.graphics.state.PDTextState;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 import org.apache.pdfbox.util.Matrix;
@@ -61,8 +65,12 @@ public class TextDrawExtractor {
     static void writeAll(String outPath, List<List<String>> objects) throws IOException {
         try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
             for (List<String> obj : objects) {
-                w.write(String.join("\t", obj));
-                w.write("\n");
+                if (obj == null) {
+                    w.write("null\n");
+                } else {
+                    w.write(String.join("\t", obj));
+                    w.write("\n");
+                }
             }
         }
     }
@@ -126,10 +134,12 @@ public class TextDrawExtractor {
     private static class MyPDFGraphicsStreamEngine extends PDFGraphicsStreamEngine {
 
         final List<List<String>> objects;
+        final float pageHeight;
 
         MyPDFGraphicsStreamEngine (PDPage page, List<List<String>> objects) {
             super(page);
             this.objects = objects;
+            pageHeight = page.getMediaBox().getHeight();
         }
 
         void addDraw(String[] ops) {
@@ -140,8 +150,13 @@ public class TextDrawExtractor {
         void addDraw(String op) { addDraw(new String[] { op }); }
 
         @Override
-        public void appendRectangle(Point2D point2D, Point2D point2D1, Point2D point2D2, Point2D point2D3) throws IOException {
-            assert false;
+        public void appendRectangle(Point2D p0, Point2D p1, Point2D p2, Point2D p3) throws IOException {
+            // from allenai/pdffigures2/GraphicBBDetector.scala
+            moveTo((float)p0.getX(), (float)p0.getY());
+            lineTo((float)p1.getX(), (float)p1.getY());
+            moveTo((float)p2.getX(), (float)p2.getY());
+            lineTo((float)p3.getX(), (float)p3.getY());
+            closePath();
         }
 
         @Override
@@ -156,18 +171,19 @@ public class TextDrawExtractor {
 
         @Override
         public void moveTo(float x, float y) throws IOException {
-            addDraw(new String[] { "[MOVE_TO]", String.valueOf(x), String.valueOf(y) });
+            addDraw(new String[] { "[MOVE_TO]", String.valueOf(x), String.valueOf(pageHeight-y) });
         }
 
         @Override
         public void lineTo(float x, float y) throws IOException {
-            addDraw(new String[] { "[LINE_TO]", String.valueOf(x), String.valueOf(y) });
+            addDraw(new String[] { "[LINE_TO]", String.valueOf(x), String.valueOf(pageHeight-y) });
         }
 
         @Override
-        public void curveTo(float v, float v1, float v2, float v3, float v4, float v5) throws IOException {
-            addDraw(new String[] { "[CURVE_TO]", String.valueOf(v), String.valueOf(v1),
-                    String.valueOf(v2), String.valueOf(v3), String.valueOf(v4), String.valueOf(v5)});
+        public void curveTo(float x1, float y1, float x2, float y2, float x3, float y3) throws IOException {
+            addDraw(new String[] { "[CURVE_TO]", String.valueOf(x1), String.valueOf(pageHeight-y1),
+                    String.valueOf(x2), String.valueOf(pageHeight-y2),
+                    String.valueOf(x3), String.valueOf(pageHeight-y3)});
         }
 
         @Override
@@ -197,11 +213,12 @@ public class TextDrawExtractor {
             addDraw(new String[] { "[SHADING_FILL]", String.valueOf(cosName) });
         }
 
-        @Override
+        /*@Override
         protected void showGlyph(Matrix textRenderingMatrix, PDFont font, int code, String unicode, Vector displacement) throws IOException {
             if (unicode == null) {
                 if (font instanceof PDSimpleFont) {
-                    //String s = new String(new char[] { (char)code });
+                    String s = new String(new char[] { (char)code });
+                    System.out.println(s);
                     objects.add(null);
                 }
                 else {
@@ -210,8 +227,31 @@ public class TextDrawExtractor {
                     return;
                 }
             } else {
+                System.out.println(unicode);
                 for (char c : unicode.toCharArray()) {
                     objects.add(null);
+                }
+            }
+        }*/
+
+        @Override
+        public void showText(byte[] string) throws IOException {
+            PDGraphicsState state = this.getGraphicsState();
+            PDTextState textState = state.getTextState();
+            PDFont font = textState.getFont();
+            if (font == null) font = PDFontFactory.createDefaultFont();
+
+            for (ByteArrayInputStream in = new ByteArrayInputStream(string); in.available() > 0;) {
+                int code = font.readCode(in);
+                String unicode = font.toUnicode(code);
+                if (unicode == null) {
+                    System.out.println(new String(string));
+                    objects.add(null);
+                }
+                else {
+                    for (char c : unicode.toCharArray()) {
+                        objects.add(null);
+                    }
                 }
             }
         }
