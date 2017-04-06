@@ -281,15 +281,15 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
         int p = 0;
         int q = 0;
 
-        for(int strLength = word.length(); q < strLength; ++q) {
+        for (int strLength = word.length(); q < strLength; ++q) {
             char c = word.charAt(q);
-            if('ﬀ' <= c && c <= '\ufdff' || 'ﹰ' <= c && c <= '\ufeff') {
-                if(builder == null) {
+            if ('ﬀ' <= c && c <= '\ufdff' || 'ﹰ' <= c && c <= '\ufeff') {
+                if (builder == null) {
                     builder = new StringBuilder(strLength * 2);
                 }
 
                 builder.append(word.substring(p, q));
-                if(c != 'ﷲ' || q <= 0 || word.charAt(q - 1) != 1575 && word.charAt(q - 1) != 'ﺍ') {
+                if (c != 'ﷲ' || q <= 0 || word.charAt(q - 1) != 1575 && word.charAt(q - 1) != 'ﺍ') {
                     builder.append(Normalizer.normalize(word.substring(q, q + 1), Normalizer.Form.NFKC).trim());
                 } else {
                     builder.append("لله");
@@ -299,7 +299,7 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
             }
         }
 
-        if(builder == null) {
+        if (builder == null) {
 //            return handleDirection(word);
             return word;
         } else {
@@ -341,9 +341,16 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
 
     void writeString(String text, List<TextPosition> textPositions) throws IOException {
         for (TextPosition p: textPositions) {
-            writer.write(String.valueOf(pageIndex));
-            writer.write("\t");
-            writer.write(p.getUnicode());
+            List<String> strs = new ArrayList<>();
+            strs.add(String.valueOf(pageIndex));
+            String unicode = p.getUnicode();
+            String normStr = Normalizer.normalize(unicode, Normalizer.Form.NFKD);
+            for (int i = 0;) {
+
+            }
+
+
+            strs.add(p.getUnicode());
             writer.write("\t");
             writer.write(String.valueOf(p.getXDirAdj()));
             writer.write("\t");
