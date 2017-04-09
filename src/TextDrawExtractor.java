@@ -220,7 +220,6 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
             lastWordSpacing = wordSpacing;
         }
         if (line.size() > 0) writeLine(normalize(line));
-        writer.write("[EOT]\n");
         textList.clear();
     }
 
@@ -229,7 +228,6 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
             writer.write(s);
             writer.write("\n");
         }
-        writer.write("[EOT]\n");
         drawList.clear();
     }
 
@@ -315,16 +313,16 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
         if(current.isParagraphStart()) {
             if(lastPosition.isArticleStart()) {
                 if(lastPosition.isLineStart()) {
-                    writeLineSeparator();
+                    //writeLineSeparator();
                 }
 
 //                this.writeParagraphStart();
             } else {
-                writeLineSeparator();
+                //writeLineSeparator();
 //                this.writeParagraphSeparator();
             }
         } else {
-            writeLineSeparator();
+            //writeLineSeparator();
         }
 
         return current;
@@ -335,49 +333,35 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
         for (int i = 0; i < numberOfStrings; ++i) {
             WordWithTextPositions word = line.get(i);
             writeString(word.getText(), word.getTextPositions());
-            if (i < numberOfStrings - 1) writeWordSeparator();
+            //if (i < numberOfStrings - 1) writeWordSeparator();
         }
     }
 
     void writeString(String text, List<TextPosition> textPositions) throws IOException {
         for (TextPosition p: textPositions) {
-            List<String> strs = new ArrayList<>();
-            strs.add(String.valueOf(pageIndex));
-            String unicode = p.getUnicode();
-            String normStr = Normalizer.normalize(unicode, Normalizer.Form.NFKD);
-            for (int i = 0;) {
-
-            }
-
-
-            strs.add(p.getUnicode());
-            writer.write("\t");
-            writer.write(String.valueOf(p.getXDirAdj()));
-            writer.write("\t");
-            writer.write(String.valueOf(p.getYDirAdj()));
-            writer.write("\t");
-            writer.write(String.valueOf(p.getWidthDirAdj()));
-            writer.write("\t");
-            writer.write(String.valueOf(p.getHeightDir()));
-            writer.write("\t");
-            writer.write(p.getFont().getName());
-            writer.write("\t");
-            writer.write(String.valueOf(p.getFontSize()));
-            writer.write("\t");
-            writer.write(String.valueOf(p.getWidthOfSpace()));
+            List<String> l = new ArrayList<>();
+            l.add(String.valueOf(pageIndex));
+            l.add(p.getUnicode());
+            l.add(String.valueOf(p.getXDirAdj()));
+            l.add(String.valueOf(p.getYDirAdj()));
+            l.add(String.valueOf(p.getWidthDirAdj()));
+            l.add(String.valueOf(p.getHeightDir()));
+            l.add(p.getFont().getName());
+            l.add(String.valueOf(p.getFontSize()));
+            l.add(String.valueOf(p.getWidthOfSpace()));
+            writer.write(String.join("\t", l));
             writer.write("\n");
         }
     }
 
-    void writeLineSeparator() throws IOException { writer.write("[EOL]\n"); }
-
-    void writeWordSeparator() throws IOException { writer.write("[EOT]\n"); }
+    //void writeLineSeparator() throws IOException { writer.write("[EOL]\n"); }
+    //void writeWordSeparator() throws IOException { writer.write("[EOT]\n"); }
 
     void addOps(Object... ops) throws IOException {
-        List<String> strs = new ArrayList<>();
-        strs.add(String.valueOf(pageIndex));
-        for (Object op : ops) strs.add(String.valueOf(op));
-        buffer.add(String.join("\t", strs));
+        List<String> l = new ArrayList<>();
+        l.add(String.valueOf(pageIndex));
+        for (Object op : ops) l.add(String.valueOf(op));
+        buffer.add(String.join("\t", l));
     }
 
     @Override
