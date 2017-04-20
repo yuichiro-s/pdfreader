@@ -1,4 +1,4 @@
 *.pdf
 *.jar
-out/*
-workspace.xml
+out/
+data/
