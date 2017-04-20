@@ -1,6 +1,6 @@
 <component name="ArtifactManager">
   <artifact type="jar" name="pdfreader:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/pdfreader_jar</output-path>
+    <output-path>$PROJECT_DIR$/out/</output-path>
     <root id="archive" name="pdfreader.jar">
       <element id="module-output" name="pdfreader" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/pdfbox/pdfbox/2.0.3/pdfbox-2.0.3.jar" path-in-jar="/" />
