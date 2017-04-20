@@ -19,10 +19,7 @@ import java.awt.geom.Point2D;
 import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.text.Normalizer;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 
 public class TextDrawExtractor extends PDFGraphicsStreamEngine {
@@ -52,24 +49,22 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
 
         try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
             for (int i = 0; i < doc.getNumberOfPages(); i++) {
-                TextDrawExtractor tde = new TextDrawExtractor(doc.getPage(i), w, i+1);
+                TextDrawExtractor tde = new TextDrawExtractor(doc.getPage(i), i+1);
                 tde.processPage(doc.getPage(i));
-                tde.writeAll();
+                w.write(String.join("\n", tde.buffer));
             }
         }
     }
 
-    Writer writer;
     int pageIndex;
     int pageRotation;
     PDRectangle pageSize;
     Matrix translateMatrix;
     final GlyphList glyphList;
-    List<Object> buffer = new ArrayList<>();
+    List<String> buffer = new ArrayList<>();
 
-    public TextDrawExtractor(PDPage page, Writer writer, int pageIndex) throws IOException {
+    public TextDrawExtractor(PDPage page, int pageIndex) throws IOException {
         super(page);
-        this.writer = writer;
         this.pageIndex = pageIndex;
 
         String path = "org/apache/pdfbox/resources/glyphlist/additional.txt";
@@ -86,276 +81,6 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
     }
 
     float getPageHeight() { return getPage().getMediaBox().getHeight(); }
-
-    void writeAll() throws IOException {
-        List<TextPosition> texts = new ArrayList<>();
-        List<String> draws = new ArrayList<>();
-        for (Object b : buffer) {
-            if (b instanceof TextPosition) {
-                if (!draws.isEmpty()) writeDraw(draws);
-                texts.add((TextPosition)b);
-            }
-            else {
-                if (!texts.isEmpty()) writeText(texts);
-                draws.add((String)b);
-            }
-        }
-        if (!draws.isEmpty()) writeDraw(draws);
-        if (!texts.isEmpty()) writeText(texts);
-    }
-
-    void writeText(List<TextPosition> textList) throws IOException {
-        // copied from PDFTextStripper.writePage
-        float maxYForLine = -3.4028235E38F;
-        float minYTopForLine = 3.4028235E38F;
-        float endOfLastTextX = -1.0F;
-        float lastWordSpacing = -1.0F;
-        float maxHeightForLine = -1.0F;
-        PositionWrapper lastPosition = null;
-        PositionWrapper lastLineStartPosition = null;
-
-        float spacingTolerance = 0.5F;
-        float averageCharTolerance = 0.3F;
-
-        boolean startOfArticle = true;
-        List<TextDrawExtractor.LineItem> line = new ArrayList<>();
-        Iterator<TextPosition> textIter = textList.iterator();
-
-        float averageCharWidth;
-        for (float previousAveCharWidth = -1.0F; textIter.hasNext(); previousAveCharWidth = averageCharWidth) {
-            TextPosition position = textIter.next();
-            TextDrawExtractor.PositionWrapper current = new TextDrawExtractor.PositionWrapper(position);
-            String characterValue = position.getUnicode();
-            if (lastPosition != null && (position.getFont() != lastPosition.getTextPosition().getFont() || position.getFontSize() != lastPosition.getTextPosition().getFontSize())) {
-                previousAveCharWidth = -1.0F;
-            }
-
-            float positionX;
-            float positionY;
-            float positionWidth;
-            float positionHeight;
-            positionX = position.getX();
-            positionY = position.getY();
-            positionWidth = position.getWidth();
-            positionHeight = position.getHeight();
-
-            int wordCharCount = position.getIndividualWidths().length;
-            float wordSpacing = position.getWidthOfSpace();
-            float deltaSpace;
-            if (wordSpacing != 0.0F && !Float.isNaN(wordSpacing)) {
-                if (lastWordSpacing < 0.0F) {
-//                    deltaSpace = wordSpacing * this.getSpacingTolerance();
-                    deltaSpace = wordSpacing * spacingTolerance;
-                } else {
-//                    deltaSpace = (wordSpacing + lastWordSpacing) / 2.0F * this.getSpacingTolerance();
-                    deltaSpace = (wordSpacing + lastWordSpacing) / 2.0F * spacingTolerance;
-                }
-            } else {
-                deltaSpace = 3.4028235E38F;
-            }
-
-            if (previousAveCharWidth < 0.0F) {
-                averageCharWidth = positionWidth / (float)wordCharCount;
-            } else {
-                averageCharWidth = (previousAveCharWidth + positionWidth / (float)wordCharCount) / 2.0F;
-            }
-
-//            float deltaCharWidth = averageCharWidth * this.getAverageCharTolerance();
-            float deltaCharWidth = averageCharWidth * averageCharTolerance;
-            float expectedStartOfNextWordX = -3.4028235E38F;
-            if (endOfLastTextX != -1.0F) {
-                if (deltaCharWidth > deltaSpace) {
-                    expectedStartOfNextWordX = endOfLastTextX + deltaSpace;
-                } else {
-                    expectedStartOfNextWordX = endOfLastTextX + deltaCharWidth;
-                }
-            }
-
-            if (lastPosition != null) {
-                if (startOfArticle) {
-                    lastPosition.setArticleStart();
-                    startOfArticle = false;
-                }
-
-                if (!overlap(positionY, positionHeight, maxYForLine, maxHeightForLine)) {
-                    writeLine(normalize(line));
-                    line.clear();
-                    lastLineStartPosition = handleLineSeparation(current, lastPosition, lastLineStartPosition, maxHeightForLine);
-                    expectedStartOfNextWordX = -3.4028235E38F;
-                    maxYForLine = -3.4028235E38F;
-                    maxHeightForLine = -1.0F;
-                    minYTopForLine = 3.4028235E38F;
-                }
-
-                if (expectedStartOfNextWordX != -3.4028235E38F && expectedStartOfNextWordX < positionX && lastPosition.getTextPosition().getUnicode() != null && !lastPosition.getTextPosition().getUnicode().endsWith(" ")) {
-                    line.add(TextDrawExtractor.LineItem.WORD_SEPARATOR);
-                }
-            }
-
-            if (positionY >= maxYForLine) {
-                maxYForLine = positionY;
-            }
-
-            endOfLastTextX = positionX + positionWidth;
-            if (characterValue != null) {
-                /*
-                if(startOfPage && lastPosition == null) {
-                    this.writeParagraphStart();
-                }
-                */
-                line.add(new TextDrawExtractor.LineItem(position));
-            }
-
-            maxHeightForLine = Math.max(maxHeightForLine, positionHeight);
-            minYTopForLine = Math.min(minYTopForLine, positionY - positionHeight);
-            lastPosition = current;
-            /*
-            if(startOfPage) {
-                current.setParagraphStart();
-                current.setLineStart();
-                lastLineStartPosition = current;
-                startOfPage = false;
-            }
-            */
-            lastWordSpacing = wordSpacing;
-        }
-        if (line.size() > 0) writeLine(normalize(line));
-        textList.clear();
-    }
-
-    void writeDraw(List<String> drawList) throws IOException {
-        for (String s : drawList) {
-            writer.write(s);
-            writer.write("\n");
-        }
-        drawList.clear();
-    }
-
-    boolean overlap(float y1, float height1, float y2, float height2) {
-        return within(y1, y2, 0.1F) || y2 <= y1 && y2 >= y1 - height1 || y1 <= y2 && y1 >= y2 - height2;
-    }
-
-    boolean within(float first, float second, float variance) {
-        return second < first + variance && second > first - variance;
-    }
-
-    List<WordWithTextPositions> normalize(List<LineItem> line) {
-        List<WordWithTextPositions> normalized = new LinkedList<>();
-        StringBuilder lineBuilder = new StringBuilder();
-        List<TextPosition> wordPositions = new ArrayList<>();
-
-        LineItem item;
-        for(Iterator i$ = line.iterator(); i$.hasNext(); lineBuilder = normalizeAdd(normalized, lineBuilder, wordPositions, item)) {
-            item = (LineItem)i$.next();
-        }
-
-        if(lineBuilder.length() > 0) {
-            normalized.add(createWord(lineBuilder.toString(), wordPositions));
-        }
-
-        return normalized;
-    }
-
-    StringBuilder normalizeAdd(List<WordWithTextPositions> normalized, StringBuilder lineBuilder, List<TextPosition> wordPositions, LineItem item) {
-        if(item.isWordSeparator()) {
-            normalized.add(createWord(lineBuilder.toString(), new ArrayList<>(wordPositions)));
-            lineBuilder = new StringBuilder();
-            wordPositions.clear();
-        } else {
-            TextPosition text = item.getTextPosition();
-            lineBuilder.append(text.getUnicode());
-            wordPositions.add(text);
-        }
-
-        return lineBuilder;
-    }
-
-    WordWithTextPositions createWord(String word, List<TextPosition> wordPositions) {
-        return new WordWithTextPositions(normalizeWord(word), wordPositions);
-    }
-
-    String normalizeWord(String word) {
-        StringBuilder builder = null;
-        int p = 0;
-        int q = 0;
-
-        for (int strLength = word.length(); q < strLength; ++q) {
-            char c = word.charAt(q);
-            if ('ﬀ' <= c && c <= '\ufdff' || 'ﹰ' <= c && c <= '\ufeff') {
-                if (builder == null) {
-                    builder = new StringBuilder(strLength * 2);
-                }
-
-                builder.append(word.substring(p, q));
-                if (c != 'ﷲ' || q <= 0 || word.charAt(q - 1) != 1575 && word.charAt(q - 1) != 'ﺍ') {
-                    builder.append(Normalizer.normalize(word.substring(q, q + 1), Normalizer.Form.NFKC).trim());
-                } else {
-                    builder.append("لله");
-                }
-
-                p = q + 1;
-            }
-        }
-
-        if (builder == null) {
-//            return handleDirection(word);
-            return word;
-        } else {
-            builder.append(word.substring(p, q));
-//            return handleDirection(builder.toString());
-            return builder.toString();
-        }
-    }
-
-    PositionWrapper handleLineSeparation(PositionWrapper current, PositionWrapper lastPosition, PositionWrapper lastLineStartPosition, float maxHeightForLine) throws IOException {
-        current.setLineStart();
-//        this.isParagraphSeparation(current, lastPosition, lastLineStartPosition, maxHeightForLine);
-        if(current.isParagraphStart()) {
-            if(lastPosition.isArticleStart()) {
-                if(lastPosition.isLineStart()) {
-                    //writeLineSeparator();
-                }
-
-//                this.writeParagraphStart();
-            } else {
-                //writeLineSeparator();
-//                this.writeParagraphSeparator();
-            }
-        } else {
-            //writeLineSeparator();
-        }
-
-        return current;
-    }
-
-    void writeLine(List<WordWithTextPositions> line) throws IOException {
-        int numberOfStrings = line.size();
-        for (int i = 0; i < numberOfStrings; ++i) {
-            WordWithTextPositions word = line.get(i);
-            writeString(word.getText(), word.getTextPositions());
-            //if (i < numberOfStrings - 1) writeWordSeparator();
-        }
-    }
-
-    void writeString(String text, List<TextPosition> textPositions) throws IOException {
-        for (TextPosition p: textPositions) {
-            List<String> l = new ArrayList<>();
-            l.add(String.valueOf(pageIndex));
-            l.add(p.getUnicode());
-            l.add(String.valueOf(p.getXDirAdj()));
-            l.add(String.valueOf(p.getYDirAdj()));
-            l.add(String.valueOf(p.getWidthDirAdj()));
-            l.add(String.valueOf(p.getHeightDir()));
-            l.add(p.getFont().getName());
-            l.add(String.valueOf(p.getFontSize()));
-            l.add(String.valueOf(p.getWidthOfSpace()));
-            writer.write(String.join("\t", l));
-            writer.write("\n");
-        }
-    }
-
-    //void writeLineSeparator() throws IOException { writer.write("[EOL]\n"); }
-    //void writeWordSeparator() throws IOException { writer.write("[EOT]\n"); }
 
     void addOps(Object... ops) throws IOException {
         List<String> l = new ArrayList<>();
@@ -509,68 +234,7 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
         TextPosition p = new TextPosition(pageRotation, pageSize.getWidth(), pageSize.getHeight(), translatedTextRenderingMatrix,
                 nextX, nextY, Math.abs(dyDisplay), dxDisplay, Math.abs(spaceWidthDisplay),
                 unicode, new int[]{code}, font, fontSize, (int) (fontSize * textMatrix.getScalingFactorX()));
-        buffer.add(p);
-    }
 
-    static final class PositionWrapper {
-        private boolean isLineStart = false;
-        private boolean isParagraphStart = false;
-        private boolean isPageBreak = false;
-        private boolean isHangingIndent = false;
-        private boolean isArticleStart = false;
-        private TextPosition position = null;
-
-        PositionWrapper(TextPosition position) { this.position = position; }
-
-        public TextPosition getTextPosition() { return this.position; }
-
-        public boolean isLineStart() { return this.isLineStart; }
-
-        public void setLineStart() { this.isLineStart = true; }
-
-        public boolean isParagraphStart() { return this.isParagraphStart; }
-
-        public void setParagraphStart() { this.isParagraphStart = true; }
-
-        public boolean isArticleStart() { return this.isArticleStart; }
-
-        public void setArticleStart() { this.isArticleStart = true; }
-
-        public boolean isPageBreak() { return this.isPageBreak; }
-
-        public void setPageBreak() { this.isPageBreak = true; }
-
-        public boolean isHangingIndent() { return this.isHangingIndent; }
-
-        public void setHangingIndent() { this.isHangingIndent = true; }
-    }
-
-    static final class WordWithTextPositions {
-        String text;
-        List<TextPosition> textPositions;
-
-        WordWithTextPositions(String word, List<TextPosition> positions) {
-            this.text = word;
-            this.textPositions = positions;
-        }
-
-        public String getText() { return this.text; }
-
-        public List<TextPosition> getTextPositions() { return this.textPositions; }
-    }
-
-    static final class LineItem {
-        public static LineItem WORD_SEPARATOR = new LineItem();
-        private final TextPosition textPosition;
-
-        public static LineItem getWordSeparator() { return WORD_SEPARATOR; }
-
-        private LineItem() { this.textPosition = null; }
-
-        LineItem(TextPosition textPosition) { this.textPosition = textPosition; }
-
-        public TextPosition getTextPosition() { return this.textPosition; }
-
-        public boolean isWordSeparator() { return this.textPosition == null; }
+        addOps(unicode, p.getXDirAdj(), p.getYDirAdj(), p.getWidthDirAdj(), p.getHeightDir(), font.getName(), fontSize, p.getWidthOfSpace());
     }
 }
