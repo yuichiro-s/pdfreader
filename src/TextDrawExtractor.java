@@ -1,5 +1,3 @@
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.fontbox.ttf.TrueTypeFont;
 import org.apache.fontbox.util.BoundingBox;
 import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
@@ -23,8 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TextDrawExtractor extends PDFGraphicsStreamEngine {
-
-    static final Log LOG = LogFactory.getLog(TextDrawExtractor.class);
 
     public static void main(String[] args) throws IOException {
         for (String path: args) {
@@ -202,7 +198,7 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
         try {
             spaceWidthText = font.getSpaceWidth() * glyphSpaceToTextSpaceFactor;
         } catch (Throwable e) {
-            LOG.warn(e, e);
+            //LOG.warn(e, e);
         }
 
         if (spaceWidthText == 0.0F) {
