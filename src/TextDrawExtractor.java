@@ -39,15 +39,21 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
         }
     }
 
-    private static void processFile(Path path) throws IOException {
+    static void processFile(Path path) throws IOException {
         PDDocument doc = PDDocument.load(path.toFile());
         String outPath = path.toString().replace(".pdf", ".feats");
 
         try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
+            List<String> buffer = new ArrayList<>();
             for (int i = 0; i < doc.getNumberOfPages(); i++) {
-                TextDrawExtractor tde = new TextDrawExtractor(doc.getPage(i), i+1);
-                tde.processPage(doc.getPage(i));
-                w.write(String.join("\n", tde.buffer));
+                TextDrawExtractor ext = new TextDrawExtractor(doc.getPage(i), i);
+                ext.processPage(doc.getPage(i));
+                buffer.addAll(ext.buffer);
+            }
+            for (int i = 0; i < buffer.size(); i++) {
+                w.write(String.valueOf(i+1)); w.write("\t");
+                w.write(buffer.get(i));
+                w.write("\n");
             }
         }
     }
@@ -78,9 +84,10 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
 
     float getPageHeight() { return getPage().getMediaBox().getHeight(); }
 
-    void addOps(Object... ops) throws IOException {
+    void addOps(Object o, Object... ops) throws IOException {
         List<String> l = new ArrayList<>();
-        l.add(String.valueOf(pageIndex));
+        l.add(String.valueOf(o));
+        l.add(String.valueOf(pageIndex+1));
         for (Object op : ops) l.add(String.valueOf(op));
         buffer.add(String.join("\t", l));
     }
