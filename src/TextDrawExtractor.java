@@ -41,7 +41,7 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
 
     static void processFile(Path path) throws IOException {
         PDDocument doc = PDDocument.load(path.toFile());
-        String outPath = path.toString() + ".txt";
+        //String outPath = path.toString() + ".txt";
 
         try (Writer w = new BufferedWriter(new OutputStreamWriter(System.out, "UTF-8"))) {
         //try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
