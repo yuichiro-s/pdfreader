@@ -43,7 +43,8 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
         PDDocument doc = PDDocument.load(path.toFile());
         String outPath = path.toString() + ".txt";
 
-        try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
+        try (Writer w = new BufferedWriter(new OutputStreamWriter(System.out, "UTF-8"))) {
+        //try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
             List<String> buffer = new ArrayList<>();
             for (int i = 0; i < doc.getNumberOfPages(); i++) {
                 TextDrawExtractor ext = new TextDrawExtractor(doc.getPage(i), i);
