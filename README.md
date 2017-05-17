@@ -2,7 +2,7 @@
 PDF reader using PDFBox.
 
 ```
-java -classpath <xExtractor> <pdf | directory>
+java -classpath pdfreader.jar TextDrawExtractor <pdf | directory>
 ```
 
 ## TextDrawExtractor
