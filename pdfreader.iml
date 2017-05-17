@@ -8,5 +8,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="org.apache.pdfbox:pdfbox:2.0.3" level="project" />
+    <orderEntry type="library" name="commons-logging:commons-logging:1.2" level="project" />
   </component>
 </module>
