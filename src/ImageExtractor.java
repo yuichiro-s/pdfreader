@@ -8,6 +8,7 @@ import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
@@ -82,11 +83,14 @@ public class ImageExtractor extends PDFStreamEngine {
                 PDImageXObject image = (PDImageXObject)xobject;
                 output.write(String.valueOf(pageNo)); output.write("\t");
 
-                // position (x, y, width, height)
                 Matrix ctmNew = getGraphicsState().getCurrentTransformationMatrix();
-                float pageHeight = this.getCurrentPage().getCropBox().getHeight();
-                output.write(ctmNew.getTranslateX() + "\t" + ctmNew.getTranslateY() + "\t");
-                output.write(ctmNew.getScalingFactorX() + "\t" + ctmNew.getScalingFactorY());
+                PDRectangle pageRect = this.getCurrentPage().getCropBox();
+                float x = ctmNew.getTranslateX();
+                float y = ctmNew.getTranslateY();
+                float w = ctmNew.getScalingFactorX();
+                float h = ctmNew.getScalingFactorY();
+                y = pageRect.getHeight() - y - h;
+                output.write(x + "\t" + y + "\t" + w + "\t" + h);
                 output.write("\n");
             }
             else if(xobject instanceof PDFormXObject) {
