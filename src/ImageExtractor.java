@@ -45,9 +45,8 @@ public class ImageExtractor extends PDFStreamEngine {
 
     static void processFile(Path path) throws IOException {
         PDDocument doc = PDDocument.load(path.toFile());
-        String outPath = path.toString().replace(".pdf", ".image");
         ImageExtractor ie = new ImageExtractor();
-        ie.output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"));
+        ie.output = new BufferedWriter(new OutputStreamWriter(System.out, "UTF-8"));
         ie.process(doc);
         ie.output.close();
     }
@@ -85,6 +84,7 @@ public class ImageExtractor extends PDFStreamEngine {
 
                 // position (x, y, width, height)
                 Matrix ctmNew = getGraphicsState().getCurrentTransformationMatrix();
+                float pageHeight = this.getCurrentPage().getCropBox().getHeight();
                 output.write(ctmNew.getTranslateX() + "\t" + ctmNew.getTranslateY() + "\t");
                 output.write(ctmNew.getScalingFactorX() + "\t" + ctmNew.getScalingFactorY());
                 output.write("\n");
