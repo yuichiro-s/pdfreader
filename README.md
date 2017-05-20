@@ -42,7 +42,7 @@ E	1   273.71237	101.367004	5.327942	3.5999548	Helvetica	1.0	2.247972
 ## ImageExtractor
 Extract images from PDF.
 ```
-java -classpath pdfreader.jar TextDrawExtractor <pdf | directory>
+java -classpath pdfreader.jar ImageExtractor <pdf | directory>
 ```
 
 1. Page number
