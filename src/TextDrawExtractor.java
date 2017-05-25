@@ -41,31 +41,26 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
 
     static void processFile(Path path) throws IOException {
         PDDocument doc = PDDocument.load(path.toFile());
-
         try (Writer w = new BufferedWriter(new OutputStreamWriter(System.out, "UTF-8"))) {
         //try (Writer w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outPath), "UTF-8"))) {
-            List<String> buffer = new ArrayList<>();
             for (int i = 0; i < doc.getNumberOfPages(); i++) {
-                TextDrawExtractor ext = new TextDrawExtractor(doc.getPage(i), i);
+                TextDrawExtractor ext = new TextDrawExtractor(w, doc.getPage(i), i);
                 ext.processPage(doc.getPage(i));
-                buffer.addAll(ext.buffer);
-            }
-            for (int i = 0; i < buffer.size(); i++) {
-                w.write(buffer.get(i));
-                w.write("\n");
             }
         }
     }
 
+    Writer out;
     int pageIndex;
     int pageRotation;
     PDRectangle pageSize;
     Matrix translateMatrix;
     final GlyphList glyphList;
-    List<String> buffer = new ArrayList<>();
+    List<String> drawBuffer = new ArrayList<>();
 
-    public TextDrawExtractor(PDPage page, int pageIndex) throws IOException {
+    public TextDrawExtractor(Writer out, PDPage page, int pageIndex) throws IOException {
         super(page);
+        this.out = out;
         this.pageIndex = pageIndex;
 
         String path = "org/apache/pdfbox/resources/glyphlist/additional.txt";
@@ -83,22 +78,22 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
 
     float getPageHeight() { return getPage().getMediaBox().getHeight(); }
 
-    void addOps(Object o, Object... ops) throws IOException {
+    void addDraw(String key, Object... values) {
         List<String> l = new ArrayList<>();
-        l.add(String.valueOf(o));
-        l.add(String.valueOf(pageIndex+1));
-        for (Object op : ops) l.add(String.valueOf(op));
-        buffer.add(String.join("\t", l));
+        l.add(key);
+        for (Object v : values) l.add(String.valueOf(v));
+        drawBuffer.add(String.join(":", l));
     }
 
     @Override
     public void appendRectangle(Point2D p0, Point2D p1, Point2D p2, Point2D p3) throws IOException {
         // copied from "allenai/pdffigures2/GraphicBBDetector.scala"
-        moveTo((float)p0.getX(), (float)p0.getY());
-        lineTo((float)p1.getX(), (float)p1.getY());
-        moveTo((float)p2.getX(), (float)p2.getY());
-        lineTo((float)p3.getX(), (float)p3.getY());
-        closePath();
+        //moveTo((float)p0.getX(), (float)p0.getY());
+        //lineTo((float)p1.getX(), (float)p1.getY());
+        //moveTo((float)p2.getX(), (float)p2.getY());
+        //lineTo((float)p3.getX(), (float)p3.getY());
+        //closePath();
+        //addOps("[RECTANGLE]", p0.getX(), p0.getY(), p2.getX(), p2.getY());
     }
 
     @Override
@@ -107,41 +102,55 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
     }
 
     @Override
-    public void clip(int i) throws IOException { addOps("[CLIP]", i); }
+    public void clip(int windingRule) throws IOException { }
 
     @Override
-    public void moveTo(float x, float y) throws IOException { addOps("[MOVE_TO]", x, getPageHeight()-y); }
+    public void moveTo(float x, float y) throws IOException { addDraw("[MOVE_TO]", x, y); }
 
     @Override
-    public void lineTo(float x, float y) throws IOException { addOps("[LINE_TO]", x, getPageHeight()-y); }
+    public void lineTo(float x, float y) throws IOException { addDraw("[LINE_TO]", x, getPageHeight()-y); }
 
     @Override
     public void curveTo(float x1, float y1, float x2, float y2, float x3, float y3) throws IOException {
-        addOps("[CURVE_TO]", x1, y1, x2, y2, x3, y3);
+        addDraw("[CURVE_TO]", x1, getPageHeight()-y1, x2, getPageHeight()-y2, x3, getPageHeight()-y3);
     }
 
     @Override
-    public Point2D getCurrentPoint() throws IOException {
-        return new Point2D.Float(0, 0);
+    public Point2D getCurrentPoint() throws IOException { return new Point2D.Float(0, 0); }
+
+    @Override
+    public void closePath() throws IOException { }
+
+    @Override
+    public void endPath() throws IOException { }
+
+    @Override
+    public void strokePath() throws IOException {
+        List<String> l = new ArrayList<>();
+        l.add("[STROKE_PATH]");
+        l.add(String.valueOf(pageIndex+1));
+        for (String s : drawBuffer) l.add(s);
+        out.write(String.join("\t", l));
+        out.write("\n");
+        drawBuffer.clear();
     }
 
     @Override
-    public void closePath() throws IOException { addOps("[CLOSE_PATH]"); }
+    public void fillPath(int windingRule) throws IOException {
+        List<String> l = new ArrayList<>();
+        l.add("[FILL_PATH]");
+        l.add(String.valueOf(pageIndex+1));
+        for (String s : drawBuffer) l.add(s);
+        out.write(String.join("\t", l));
+        out.write("\n");
+        drawBuffer.clear();
+    }
 
     @Override
-    public void endPath() throws IOException { addOps("[END_PATH]"); }
+    public void fillAndStrokePath(int windingRule) throws IOException { fillPath(windingRule); }
 
     @Override
-    public void strokePath() throws IOException { addOps("[STROKE_PATH]"); }
-
-    @Override
-    public void fillPath(int i) throws IOException { addOps("[FILL_PATH]"); }
-
-    @Override
-    public void fillAndStrokePath(int i) throws IOException { addOps("[FILL_AND_STROKE_PATH]", i); }
-
-    @Override
-    public void shadingFill(COSName cosName) throws IOException { addOps("[SHADING_FILL]", cosName); }
+    public void shadingFill(COSName cosName) throws IOException { }
 
     @Override
     public void showFontGlyph(Matrix textRenderingMatrix, PDFont font, int code, String unicode, Vector displacement) throws IOException {
@@ -212,9 +221,7 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
             spaceWidthText *= 0.8F;
         }
 
-        if (spaceWidthText == 0.0F) {
-            spaceWidthText = 1.0F;
-        }
+        if (spaceWidthText == 0.0F) spaceWidthText = 1.0F;
 
         float spaceWidthDisplay = spaceWidthText * textRenderingMatrix.getScalingFactorX();
         unicode = font.toUnicode(code, this.glyphList);
@@ -237,6 +244,12 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
                 nextX, nextY, Math.abs(dyDisplay), dxDisplay, Math.abs(spaceWidthDisplay),
                 unicode, new int[]{code}, font, fontSize, (int) (fontSize * textMatrix.getScalingFactorX()));
 
-        addOps(unicode, p.getXDirAdj(), p.getYDirAdj(), p.getWidthDirAdj(), p.getHeightDir(), font.getName(), fontSize, p.getWidthOfSpace());
+        List<String> l = new ArrayList<>();
+        l.add(unicode);
+        l.add(String.valueOf(pageIndex+1));
+        Object[] values = new Object[] { p.getXDirAdj(), p.getYDirAdj(), p.getWidthDirAdj(), p.getHeightDir(), font.getName(), fontSize, p.getWidthOfSpace() };
+        for (Object v : values) l.add(String.valueOf(v));
+        out.write(String.join("\t", l));
+        out.write("\n");
     }
 }
