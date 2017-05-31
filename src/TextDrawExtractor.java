@@ -227,8 +227,7 @@ public class TextDrawExtractor extends PDFGraphicsStreamEngine {
         unicode = font.toUnicode(code, this.glyphList);
         if (unicode == null) {
             if (!(font instanceof PDSimpleFont)) return;
-            char c = (char)code;
-            unicode = new String(new char[]{c});
+            unciode = "[NO_UNICODE]";
         }
 
         Matrix translatedTextRenderingMatrix;
